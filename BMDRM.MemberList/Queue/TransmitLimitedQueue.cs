@@ -124,30 +124,39 @@ namespace BMDRM.MemberList.Queue
                     return Array.Empty<byte[]>();
                 }
 
-                int retransmitLimit = ComputeRetransmitLimit(NumNodes());
+                int retransmitLimit = ComputeRetransmitLimit(NumNodes(), RetransmitMult);
                 var toSend = new List<byte[]>();
                 var reinsert = new List<LimitedBroadcast>();
-                var toRemove = new List<LimitedBroadcast>();
                 int bytesUsed = 0;
 
-                // Create a snapshot of the queue to avoid modification during iteration
-                var snapshot = _queue.ToList();
-                foreach (var item in snapshot)
+                // Process messages in order of transmit count, message length, and ID
+                var messages = _queue
+                    .OrderBy(x => x.Transmits)
+                    .ThenBy(x => x.MessageLength)
+                    .ThenBy(x => x.Id)
+                    .ToList();
+
+                foreach (var item in messages)
                 {
                     // Check if we have space for this message
                     long freeSpace = (long)(limit - bytesUsed);
-                    if (freeSpace <= overhead || item.MessageLength > freeSpace - overhead)
+                    if (freeSpace <= overhead)
+                    {
+                        break;
+                    }
+
+                    var msg = item.Broadcast.Message();
+                    if (msg.Length > freeSpace - overhead)
                     {
                         continue;
                     }
 
                     // Add message to send
-                    var msg = item.Broadcast.Message();
                     bytesUsed += overhead + msg.Length;
                     toSend.Add(msg);
 
-                    // Mark for removal
-                    toRemove.Add(item);
+                    // Remove from queue
+                    DeleteItemLocked(item);
 
                     // Check retransmit limit
                     if (item.Transmits + 1 >= retransmitLimit)
@@ -162,11 +171,7 @@ namespace BMDRM.MemberList.Queue
                     }
                 }
 
-                // Remove and reinsert items
-                foreach (var item in toRemove)
-                {
-                    DeleteItemLocked(item);
-                }
+                // Reinsert items that need to be retransmitted
                 foreach (var item in reinsert)
                 {
                     AddItemLocked(item);
@@ -218,21 +223,22 @@ namespace BMDRM.MemberList.Queue
 
                 var toDelete = _queue.Count - maxRetain;
                 var toRemove = _queue
-                    .OrderByDescending(x => x.Id)
-                    .Skip(maxRetain)
+                    .OrderBy(x => x.Id)
+                    .Take(toDelete)
                     .ToList();
 
                 foreach (var item in toRemove)
                 {
+                    item.Broadcast.Finished();
                     DeleteItemLocked(item);
                 }
             }
         }
 
-        private static int ComputeRetransmitLimit(int numNodes)
+        private static int ComputeRetransmitLimit(int numNodes, int retransmitMult)
         {
             if (numNodes <= 1) return 1;
-            return (int)Math.Ceiling(Math.Log10(numNodes + 1)) * 1;
+            return (int)(Math.Ceiling(Math.Log10(numNodes + 1)) * retransmitMult);
         }
 
         private class LimitedBroadcastComparer : IComparer<LimitedBroadcast>
