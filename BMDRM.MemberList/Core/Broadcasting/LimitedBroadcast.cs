@@ -3,7 +3,7 @@ namespace BMDRM.MemberList.Core.Broadcasting
     /// <summary>
     /// Represents a broadcast with limited transmissions
     /// </summary>
-    internal class LimitedBroadcast : IComparable<LimitedBroadcast>
+    internal class LimitedBroadcast
     {
         public int Transmits { get; set; }  // Number of transmissions attempted
         public long MessageLength { get; }   // Length of the broadcast message
@@ -22,22 +22,6 @@ namespace BMDRM.MemberList.Core.Broadcasting
             {
                 Name = named.Name;
             }
-        }
-
-        public int CompareTo(LimitedBroadcast? other)
-        {
-            if (other == null) return 1;
-
-            // Primary sort by transmits (ascending)
-            var transmitCompare = Transmits.CompareTo(other.Transmits);
-            if (transmitCompare != 0) return transmitCompare;
-
-            // Secondary sort by message length (descending)
-            var lengthCompare = other.MessageLength.CompareTo(MessageLength);
-            if (lengthCompare != 0) return lengthCompare;
-
-            // Tertiary sort by ID (descending)
-            return other.Id.CompareTo(Id);
         }
     }
 }
