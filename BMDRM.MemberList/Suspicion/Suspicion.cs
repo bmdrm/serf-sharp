@@ -133,8 +133,8 @@ namespace BMDRM.MemberList.Suspicion
                 throw new ObjectDisposedException(nameof(Suspicion));
             }
 
-            // If we've got enough confirmations then stop accepting them
-            if (Interlocked.CompareExchange(ref _confirmationCount, 0, 0) >= _targetConfirmations)
+            // If we have no target confirmations, reject all confirmations
+            if (_targetConfirmations <= 0)
             {
                 return false;
             }
@@ -145,26 +145,31 @@ namespace BMDRM.MemberList.Suspicion
                 return false;
             }
 
-            // Increment the confirmation count
-            var newCount = Interlocked.Increment(ref _confirmationCount);
-
-            // Compute the new timeout given the current number of confirmations and
-            // adjust the timer. If the timeout becomes negative and we can cleanly
-            // stop the timer then we will call the timeout function directly.
-            var elapsed = DateTime.UtcNow - _startTime;
-            var remaining = CalculateRemainingSuspicionTime(newCount, _targetConfirmations, elapsed, _minDuration, _maxDuration);
-
-            // If the timeout becomes negative, try to stop the timer and call the timeout function
-            if (remaining <= TimeSpan.Zero)
+            // Increment the confirmation count, but cap it at target + 1 for timing purposes
+            var currentCount = Interlocked.CompareExchange(ref _confirmationCount, 0, 0);
+            var newCount = currentCount;
+            if (currentCount < _targetConfirmations)
             {
-                // Stop the timer first
-                _timer.Change(Timeout.Infinite, Timeout.Infinite);
-                ThreadPool.QueueUserWorkItem(_ => _timeoutCallback(newCount));
-            }
-            else
-            {
-                // Try to stop the timer and reset it with the new timeout
-                _timer.Change(remaining, Timeout.InfiniteTimeSpan);
+                newCount = Interlocked.Increment(ref _confirmationCount);
+
+                // Compute the new timeout given the current number of confirmations and
+                // adjust the timer. If the timeout becomes negative and we can cleanly
+                // stop the timer then we will call the timeout function directly.
+                var elapsed = DateTime.UtcNow - _startTime;
+                var remaining = CalculateRemainingSuspicionTime(newCount, _targetConfirmations, elapsed, _minDuration, _maxDuration);
+
+                // If the timeout becomes negative, try to stop the timer and call the timeout function
+                if (remaining <= TimeSpan.Zero)
+                {
+                    // Stop the timer first
+                    _timer.Change(Timeout.Infinite, Timeout.Infinite);
+                    ThreadPool.QueueUserWorkItem(_ => _timeoutCallback(newCount));
+                }
+                else
+                {
+                    // Try to stop the timer and reset it with the new timeout
+                    _timer.Change(remaining, Timeout.InfiniteTimeSpan);
+                }
             }
 
             return true;

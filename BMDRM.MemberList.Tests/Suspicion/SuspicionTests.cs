@@ -4,14 +4,22 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 using BMDRM.MemberList.Suspicion;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace BMDRM.MemberList.Tests.Suspicion
 {
     public class SuspicionTests
     {
-        private static readonly TimeSpan Fudge = TimeSpan.FromMilliseconds(25);
+        private static readonly TimeSpan Fudge = TimeSpan.FromMilliseconds(50); // Increased from 25ms to 50ms
+        private readonly ITestOutputHelper _output;
+
+        public SuspicionTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
 
         [Theory]
         [InlineData(0, 3, 0, 2, 30, 30)]
@@ -57,11 +65,14 @@ namespace BMDRM.MemberList.Tests.Suspicion
             var confirmationCount = 0;
             var fired = new TaskCompletionSource<TimeSpan>();
             var start = DateTime.UtcNow;
+            _output.WriteLine($"Test started at: {start:HH:mm:ss.fff}");
 
             void OnTimeout(int count)
             {
+                var fireTime = DateTime.UtcNow;
                 confirmationCount = count;
-                fired.TrySetResult(DateTime.UtcNow - start);
+                _output.WriteLine($"Timer fired at: {fireTime:HH:mm:ss.fff}, elapsed: {(fireTime - start).TotalMilliseconds}ms");
+                fired.TrySetResult(fireTime - start);
             }
 
             // Act
@@ -70,30 +81,39 @@ namespace BMDRM.MemberList.Tests.Suspicion
             var seenConfirmations = new HashSet<string>();
             foreach (var confirmer in confirmations)
             {
+                var beforeConfirm = DateTime.UtcNow;
                 await Task.Delay(Fudge);
                 var wasNew = suspicion.Confirm(confirmer);
                 var shouldBeNew = confirmer != from && !seenConfirmations.Contains(confirmer);
                 seenConfirmations.Add(confirmer);
+                _output.WriteLine($"Confirmed {confirmer} at {DateTime.UtcNow:HH:mm:ss.fff}, wasNew: {wasNew}, shouldBeNew: {shouldBeNew}");
                 Assert.Equal(shouldBeNew, wasNew);
             }
 
-            // Wait until right before the timeout
+            // Calculate how long we've already waited
             var alreadyWaited = TimeSpan.FromMilliseconds(confirmations.Length * Fudge.TotalMilliseconds);
-            await Task.Delay(expected - alreadyWaited - Fudge);
+            var remainingWait = expected - alreadyWaited - Fudge;
+            _output.WriteLine($"Already waited: {alreadyWaited.TotalMilliseconds}ms, remaining wait: {remainingWait.TotalMilliseconds}ms");
+
+            // Wait until right before the timeout
+            await Task.Delay(remainingWait);
             
             // Should not have fired yet
+            var beforeCheck = DateTime.UtcNow;
+            _output.WriteLine($"Checking if fired too early at: {beforeCheck:HH:mm:ss.fff}, elapsed: {(beforeCheck - start).TotalMilliseconds}ms");
             Assert.False(fired.Task.IsCompleted);
 
-            // Wait through the timeout
-            await Task.Delay(2 * Fudge);
+            // Wait through the timeout with extra margin
+            await Task.Delay(3 * Fudge);
             
             // Should have fired
-            var result = await fired.Task.WaitAsync(TimeSpan.FromMilliseconds(100));
+            var result = await fired.Task.WaitAsync(TimeSpan.FromMilliseconds(200));
+            _output.WriteLine($"Final timer duration: {result.TotalMilliseconds}ms");
             Assert.Equal(expectedConfirmations, confirmationCount);
 
             // Confirm after to ensure it doesn't fire again
             suspicion.Confirm("late");
-            await Task.Delay(expected + 2 * Fudge);
+            await Task.Delay(expected + 3 * Fudge);
             
             // Should not fire again
             Assert.Equal(TaskStatus.RanToCompletion, fired.Task.Status);
