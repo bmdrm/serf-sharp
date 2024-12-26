@@ -11,7 +11,6 @@ namespace BMDRM.MemberList.Core.Tracking
     {
         private readonly int _max;
         private int _score;  // Will be accessed via Interlocked
-        private readonly Meter _meter;
         private readonly KeyValuePair<string, string>[] _metricLabels;
         private readonly ObservableGauge<int> _healthScoreGauge;
 
@@ -20,9 +19,9 @@ namespace BMDRM.MemberList.Core.Tracking
             _max = max;
             _score = 0;
             _metricLabels = metricLabels;
-            _meter = new Meter("BMDRM.MemberList");
-            _healthScoreGauge = _meter.CreateObservableGauge("memberlist.health.score", 
-                () => GetHealthScore(),
+            var meter = new Meter("BMDRM.MemberList");
+            _healthScoreGauge = meter.CreateObservableGauge("memberlist.health.score", 
+                GetHealthScore,
                 description: "Current health score of the node");
         }
 
@@ -32,12 +31,13 @@ namespace BMDRM.MemberList.Core.Tracking
         /// </summary>
         public void ApplyDelta(int delta)
         {
-            int initial, newValue, final;
-            
+            int initial;
+            int final;
+
             do
             {
                 initial = Interlocked.CompareExchange(ref _score, 0, 0); // Read current value
-                newValue = initial + delta;
+                var newValue = initial + delta;
                 
                 // Constrain the new value
                 if (newValue < 0)
@@ -64,7 +64,7 @@ namespace BMDRM.MemberList.Core.Tracking
         /// </summary>
         public TimeSpan ScaleTimeout(TimeSpan timeout)
         {
-            int score = GetHealthScore();
+            var score = GetHealthScore();
             return timeout * (score + 1);
         }
     }

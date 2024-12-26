@@ -16,17 +16,17 @@ namespace BMDRM.MemberList.Queue
         /// NumNodes returns the number of nodes in the cluster.
         /// Used to determine the retransmit count (log2-based).
         /// </summary>
-        public Func<int> NumNodes { get; set; }
+        public Func<int> NumNodes { get; init; }
 
         /// <summary>
         /// RetransmitMult is the multiplier used to determine the maximum
         /// number of retransmissions attempted.
         /// </summary>
-        public int RetransmitMult { get; set; }
+        public int RetransmitMult { get; init; }
 
         private readonly object _lock = new object();
         private readonly SortedSet<LimitedBroadcast> _queue = new(new LimitedBroadcastComparer());
-        private Dictionary<string, LimitedBroadcast> _namedBroadcasts = new();
+        private readonly Dictionary<string, LimitedBroadcast> _namedBroadcasts = new();
         private long _idGen;
 
         public TransmitLimitedQueue()
@@ -66,19 +66,22 @@ namespace BMDRM.MemberList.Queue
                         DeleteItemLocked(old);
                     }
                 }
-                else if (!(broadcast is IUniqueBroadcast))
+                else if (broadcast is not IUniqueBroadcast)
                 {
                     var toRemove = new List<LimitedBroadcast>();
-                    foreach (var item in _queue)
+                    var items = from item in
+                            _queue
+                        where item.Broadcast
+                            is not INamedBroadcast
+                        where item.Broadcast
+                            is not IUniqueBroadcast
+                        where broadcast.Invalidates(item.Broadcast)
+                        select item;
+                    
+                    foreach (var item in items)
                     {
-                        if (item.Broadcast is INamedBroadcast) continue;
-                        if (item.Broadcast is IUniqueBroadcast) continue;
-
-                        if (broadcast.Invalidates(item.Broadcast))
-                        {
-                            item.Broadcast.Finished();
-                            toRemove.Add(item);
-                        }
+                        item.Broadcast.Finished();
+                        toRemove.Add(item);
                     }
                     foreach (var item in toRemove)
                     {
@@ -121,13 +124,13 @@ namespace BMDRM.MemberList.Queue
             {
                 if (_queue.Count == 0)
                 {
-                    return Array.Empty<byte[]>();
+                    return [];
                 }
 
-                int retransmitLimit = ComputeRetransmitLimit(NumNodes(), RetransmitMult);
+                var retransmitLimit = ComputeRetransmitLimit(NumNodes(), RetransmitMult);
                 var toSend = new List<byte[]>();
                 var reinsert = new List<LimitedBroadcast>();
-                int bytesUsed = 0;
+                var bytesUsed = 0;
 
                 // Process messages in order of transmit count, message length, and ID
                 var messages = _queue
@@ -139,7 +142,7 @@ namespace BMDRM.MemberList.Queue
                 foreach (var item in messages)
                 {
                     // Check if we have space for this message
-                    long freeSpace = (long)(limit - bytesUsed);
+                    var freeSpace = (long)(limit - bytesUsed);
                     if (freeSpace <= overhead)
                     {
                         break;
@@ -259,13 +262,9 @@ namespace BMDRM.MemberList.Queue
 
                 // Secondary sort by message length (descending)
                 var lengthCompare = y.MessageLength.CompareTo(x.MessageLength);
-                if (lengthCompare != 0)
-                {
-                    return lengthCompare;
-                }
-
-                // Tertiary sort by ID (descending)
-                return y.Id.CompareTo(x.Id);
+                return lengthCompare != 0 ? lengthCompare :
+                    // Tertiary sort by ID (descending)
+                    y.Id.CompareTo(x.Id);
             }
         }
     }

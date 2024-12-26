@@ -328,8 +328,8 @@ namespace BMDRM.MemberList.Tests.Transport
 
                     // Act
                     await m2.SendToAsync(t1.GetLocalAddress(), "SendTo"u8.ToArray());
-                    await m2.SendToUDPAsync(n1, "SendToUDP"u8.ToArray());
-                    await m2.SendToTCPAsync(n1, "SendToTCP"u8.ToArray());
+                    await m2.SendToUdpAsync(n1, "SendToUDP"u8.ToArray());
+                    await m2.SendToTcpAsync(n1, "SendToTCP"u8.ToArray());
                     await m2.SendBestEffortAsync(n1, "SendBestEffort"u8.ToArray());
                     await m2.SendReliableAsync(n1, "SendReliable"u8.ToArray());
 
@@ -375,7 +375,7 @@ namespace BMDRM.MemberList.Tests.Transport
             var listenTask = transport.TcpListenAsync(listener, cts.Token);
 
             // Act
-            await Task.Delay(4000); // Wait 4 seconds
+            await Task.Delay(4000, cts.Token); // Wait 4 seconds
             cts.Cancel();
 
             try
@@ -406,6 +406,11 @@ namespace BMDRM.MemberList.Tests.Transport
             public void Log(string message)
             {
                 _onLog(message);
+            }
+
+            public void LogError(string message)
+            {
+                throw new NotImplementedException();
             }
         }
     }

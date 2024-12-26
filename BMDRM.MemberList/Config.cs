@@ -19,7 +19,7 @@ namespace BMDRM.MemberList
         /// <summary>
         /// Transport is a hook for providing custom code to communicate with other nodes.
         /// </summary>
-        public ITransport Transport { get; set; } = null!;
+        public ITransport? Transport { get; set; } = null!;
 
         /// <summary>
         /// Optional set of bytes to include on the outside of each packet and stream.
@@ -145,7 +145,7 @@ namespace BMDRM.MemberList
         /// <summary>
         /// Used to initialize the primary encryption key in a keyring
         /// </summary>
-        public byte[] SecretKey { get; set; } = Array.Empty<byte>();
+        public byte[] SecretKey { get; set; } = [];
 
         /// <summary>
         /// Delegate for receiving and providing data to memberlist
@@ -157,32 +157,20 @@ namespace BMDRM.MemberList
         /// </summary>
         public List<IPNetwork> CIDRsAllowed { get; set; } = new();
 
+        public ILogger Logger { get; set; } = new ConsoleLogger();
         /// <summary>
         /// Checks if an IP address is allowed based on the configured CIDRs
         /// </summary>
         public bool IsIPAllowed(IPAddress ip)
         {
             // If no CIDRs are specified, all IPs are allowed
-            if (CIDRsAllowed.Count == 0)
-            {
-                return true;
-            }
-
-            foreach (var network in CIDRsAllowed)
-            {
-                if (network.Contains(ip))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return CIDRsAllowed.Count == 0 || CIDRsAllowed.Any(network => network.Contains(ip));
         }
 
         /// <summary>
         /// Parse a list of CIDR strings into IPNetwork objects
         /// </summary>
-        public static List<IPNetwork> ParseCIDRs(string[] cidrs)
+        public static List<IPNetwork> ParseCIDRs(string[]? cidrs)
         {
             var result = new List<IPNetwork>();
             if (cidrs == null) return result;
@@ -246,69 +234,5 @@ namespace BMDRM.MemberList
         /// Returns whether encryption is enabled
         /// </summary>
         public bool EncryptionEnabled() => SecretKey.Length > 0;
-    }
-
-    /// <summary>
-    /// Represents an IP network with CIDR notation
-    /// </summary>
-    public class IPNetwork
-    {
-        private readonly IPAddress _networkAddress;
-        private readonly int _prefixLength;
-        private readonly byte[] _networkMask;
-
-        public IPNetwork(IPAddress networkAddress, int prefixLength)
-        {
-            _networkAddress = networkAddress;
-            _prefixLength = prefixLength;
-            _networkMask = CreateNetworkMask(networkAddress.AddressFamily, prefixLength);
-        }
-
-        public bool Contains(IPAddress ip)
-        {
-            if (ip.AddressFamily != _networkAddress.AddressFamily)
-            {
-                return false;
-            }
-
-            var ipBytes = ip.GetAddressBytes();
-            var networkBytes = _networkAddress.GetAddressBytes();
-
-            for (var i = 0; i < ipBytes.Length; i++)
-            {
-                if ((ipBytes[i] & _networkMask[i]) != (networkBytes[i] & _networkMask[i]))
-                {
-                    return false;
-                }
-            }
-
-            return true;
-        }
-
-        private static byte[] CreateNetworkMask(System.Net.Sockets.AddressFamily addressFamily, int prefixLength)
-        {
-            var maskLength = addressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 4 : 16;
-            var mask = new byte[maskLength];
-            
-            for (var i = 0; i < maskLength; i++)
-            {
-                if (prefixLength >= 8)
-                {
-                    mask[i] = 0xFF;
-                    prefixLength -= 8;
-                }
-                else if (prefixLength > 0)
-                {
-                    mask[i] = (byte)(0xFF << (8 - prefixLength));
-                    prefixLength = 0;
-                }
-                else
-                {
-                    mask[i] = 0x00;
-                }
-            }
-
-            return mask;
-        }
     }
 }

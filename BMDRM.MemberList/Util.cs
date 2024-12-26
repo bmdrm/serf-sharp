@@ -10,6 +10,7 @@ using BMDRM.MemberList.Network.Messages;
 using BMDRM.MemberList.State;
 using K4os.Compression.LZ4;
 using MessagePack;
+using CompressionType = BMDRM.MemberList.Network.CompressionType;
 
 namespace BMDRM.MemberList;
 
@@ -49,7 +50,7 @@ public static class Util
     /// </summary>
     public static T? Decode<T>(byte[] buf)
     {
-        return MessagePackSerializer.Deserialize<T>(buf[1..]);
+        return MessagePackSerializer.Deserialize<T>(buf.AsMemory()[1..]);
     }
 
     /// <summary>
@@ -73,11 +74,7 @@ public static class Util
     /// </summary>
     public static int RandomOffset(int n)
     {
-        if (n == 0)
-        {
-            return 0;
-        }
-        return Random.Next(n);
+        return n == 0 ? 0 : Random.Next(n);
     }
 
     /// <summary>
@@ -235,7 +232,7 @@ public static class Util
             return s;
         }
 
-        if (s.Contains(":") && !s.StartsWith("["))
+        if (s.Contains(':') && !s.StartsWith('['))
         {
             // IPv6 address without port
             return $"[{s}]:{port}";
@@ -363,7 +360,7 @@ public static class Util
         var compressed = LZ4Pickler.Pickle(input);
         var msg = new Compress
         {
-            Algo = Network.CompressionType.Lz4,
+            Algo = CompressionType.Lz4,
             Buf = compressed
         };
         return Encode(MessageType.Compress, msg);
@@ -375,10 +372,11 @@ public static class Util
     public static byte[] DecompressPayload(byte[] payload)
     {
         var msg = Decode<Compress>(payload);
+        if(msg == null) throw new AggregateException("Decompression failed");
         return msg.Algo switch
         {
-            Network.CompressionType.None => msg.Buf,
-            Network.CompressionType.Lz4 => LZ4Pickler.Unpickle(msg.Buf),
+            CompressionType.None => msg.Buf,
+            CompressionType.Lz4 => LZ4Pickler.Unpickle(msg.Buf),
             _ => throw new ArgumentException($"Unknown compression algorithm: {msg.Algo}")
         };
     }

@@ -5,6 +5,8 @@ using BMDRM.MemberList.Queue;
 using BMDRM.MemberList.Transport;
 using BMDRM.MemberList.Core.Tracking;
 using BMDRM.MemberList.Suspicion;
+using BMDRM.MemberList.Core.Broadcasting;
+using BMDRM.MemberList.Network;
 
 namespace BMDRM.MemberList
 {
@@ -25,7 +27,7 @@ namespace BMDRM.MemberList
         private int _leave;     // Used as an atomic boolean value
         private readonly CancellationTokenSource _leaveBroadcastCts = new();
 
-        private readonly object _shutdownLock = new();  // Serializes calls to Shutdown
+        private readonly object _shutdownLock = new();  // Serializes calls to shut down
         private readonly object _leaveLock = new();     // Serializes calls to Leave
 
         private readonly INodeAwareTransport _transport;
@@ -56,27 +58,21 @@ namespace BMDRM.MemberList
             _config = config;
             
             // Set up a network transport by default if a custom one wasn't given
-            if (config.Transport == null)
+            config.Transport ??= new NetTransport(new ConsoleLogger());
+
+            // Wrap transport in label handler if needed
+            if (config.Transport is INodeAwareTransport nat)
             {
-                var nt = new NetTransport();
-                _transport = new ShimNodeAwareTransport(nt);
+                _transport = nat;
             }
             else
             {
-                // Check if the transport is already node-aware
-                if (config.Transport is INodeAwareTransport nat)
-                {
-                    _transport = nat;
-                }
-                else
-                {
-                    // Wrap in a shim to make it node-aware
-                    _transport = new ShimNodeAwareTransport(config.Transport);
-                }
+                // Wrap in a shim to make it node-aware
+                _transport = new ShimNodeAwareTransport(config.Transport);
             }
 
             // Initialize awareness with max multiplier
-            _awareness = new Awareness(config.AwarenessMaxMultiplier, Array.Empty<KeyValuePair<string, string>>());
+            _awareness = new Awareness(config.AwarenessMaxMultiplier, []);
         }
 
         public static async Task<Memberlist> CreateAsync(Config config)
@@ -137,7 +133,7 @@ namespace BMDRM.MemberList
             }
         }
 
-        public async Task<(int, Exception?)> JoinAsync(string[] nodes)
+        public async Task<(int, Exception?)> JoinAsync(string[]? nodes)
         {
             if (nodes == null || nodes.Length == 0)
                 return (0, null);
@@ -153,16 +149,14 @@ namespace BMDRM.MemberList
                     var name = parts[0];
                     var addr = parts[1];
 
-                    if (!_nodes.Any(m => m.Name == name))
+                    if (_nodes.Any(m => m.Name == name)) continue;
+                    _nodes.Add(new NodeState
                     {
-                        _nodes.Add(new NodeState
-                        {
-                            Name = name,
-                            Address = ParseEndPoint(addr),
-                            State = NodeStateType.Alive
-                        });
-                        numSuccess++;
-                    }
+                        Name = name,
+                        Address = ParseEndPoint(addr),
+                        State = NodeStateType.Alive
+                    });
+                    numSuccess++;
                 }
                 catch (Exception)
                 {
@@ -189,16 +183,16 @@ namespace BMDRM.MemberList
             await _transport.WriteToAsync(msg, addr.ToString());
         }
 
-        public async Task SendToUDPAsync(Node node, byte[] msg)
+        public async Task SendToUdpAsync(Node node, byte[] msg)
         {
-            var addr = new Address { Addr = node.Address.ToString(), Name = node.Name };
+            var addr = new Address(node.Address.ToString(), node.Name);
             await _transport.WriteToAddressAsync(msg, addr);
             _config.Delegate?.NotifyMsg(msg);
         }
 
-        public async Task SendToTCPAsync(Node node, byte[] msg)
+        public async Task SendToTcpAsync(Node node, byte[] msg)
         {
-            var addr = new Address { Addr = node.Address.ToString(), Name = node.Name };
+            var addr = new Address(node.Address.ToString(), node.Name);
             var socket = await _transport.DialAddressTimeoutAsync(addr, TimeSpan.FromSeconds(10));
             await socket.SendAsync(msg);
             _config.Delegate?.NotifyMsg(msg);
@@ -206,17 +200,22 @@ namespace BMDRM.MemberList
 
         public async Task SendBestEffortAsync(Node node, byte[] msg)
         {
-            await SendToUDPAsync(node, msg);
+            await SendToUdpAsync(node, msg);
         }
 
         public async Task SendReliableAsync(Node node, byte[] msg)
         {
-            await SendToTCPAsync(node, msg);
+            await SendToTcpAsync(node, msg);
         }
 
         private bool HasShutdown()
         {
-            return Interlocked.CompareExchange(ref _shutdown, 0, 0) == 1;
+            return _shutdown == 1;
+        }
+
+        public int EstNumNodes()
+        {
+            return _nodes.Count;
         }
 
         private bool HasLeft()
@@ -246,6 +245,61 @@ namespace BMDRM.MemberList
         public int GetHealthScore()
         {
             return _awareness.GetHealthScore();
+        }
+
+        public void EncodeAndBroadcast(string node, MessageType msgType, object msg)
+        {
+            EncodeBroadcastNotify(node, msgType, msg, null);
+        }
+
+        public void EncodeBroadcastNotify(string node, MessageType msgType, object msg, Action? notify)
+        {
+            try
+            {
+                var encoded = Util.Encode(msgType, msg);
+                QueueBroadcast(node, encoded, notify);
+            }
+            catch (Exception ex)
+            {
+                _config.Logger.LogError($"Failed to encode message for broadcast: {ex.Message}");
+            }
+        }
+
+        public void QueueBroadcast(string node, byte[] msg, Action? notify = null)
+        {
+            var broadcast = new MemberListBroadcast(node, msg, notify);
+            _broadcasts.QueueBroadcast(broadcast);
+        }
+
+        public List<byte[]> GetBroadcasts(int overhead, int limit)
+        {
+            // Get memberlist messages first
+            var toSend = _broadcasts.GetBroadcasts(overhead, limit).ToList();
+
+            // Check if the user has anything to broadcast
+            var userDelegate = _config.Delegate;
+            {
+                // Determine the bytes used already
+                var bytesUsed = toSend.Sum(msg => msg.Length + overhead);
+
+                // Check space remaining for user messages
+                var avail = limit - bytesUsed;
+                if (avail <= overhead + Constants.UserMsgOverhead) return toSend;
+                {
+                    var userMsgs = userDelegate.GetBroadcasts(overhead + Constants.UserMsgOverhead, avail);
+
+                    // Frame each user message
+                    foreach (var msg in userMsgs)
+                    {
+                        var buf = new byte[msg.Length + 1];
+                        buf[0] = (byte)MessageType.User;
+                        Buffer.BlockCopy(msg, 0, buf, 1, msg.Length);
+                        toSend.Add(buf);
+                    }
+                }
+            }
+
+            return toSend;
         }
     }
 }
