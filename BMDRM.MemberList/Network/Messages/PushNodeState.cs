@@ -1,45 +1,44 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
+using MessagePack;
+using BMDRM.MemberList.State;
+
 namespace BMDRM.MemberList.Network.Messages;
 
 /// <summary>
-/// PushNodeState is used for pushPullReq when we are transferring out node states
+/// PushNodeState is used for state syncs between nodes
 /// </summary>
+[MessagePackObject]
 public class PushNodeState
 {
     /// <summary>
     /// Node name
     /// </summary>
+    [Key(0)]
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Node address
     /// </summary>
-    public byte[] Addr { get; set; } = Array.Empty<byte>();
+    [Key(1)]
+    public string Addr { get; set; } = string.Empty;
 
     /// <summary>
     /// Node port
     /// </summary>
-    public ushort Port { get; set; }
-
-    /// <summary>
-    /// Node metadata
-    /// </summary>
-    public byte[]? Meta { get; set; }
+    [Key(2)]
+    public int Port { get; set; }
 
     /// <summary>
     /// Incarnation number
     /// </summary>
-    public uint Incarnation { get; set; }
+    [Key(3)]
+    public ulong Incarnation { get; set; }
 
     /// <summary>
-    /// Node state type
+    /// Node state
     /// </summary>
+    [Key(4)]
     public NodeStateType State { get; set; }
-
-    /// <summary>
-    /// Protocol versions
-    /// </summary>
-    public byte[] Vsn { get; set; } = Array.Empty<byte>();
 }

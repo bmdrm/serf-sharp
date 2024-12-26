@@ -1,15 +1,19 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
+using MessagePack;
+
 namespace BMDRM.MemberList.Network.Messages;
 
 /// <summary>
-/// Error response is sent to relay the error from the remote end
+/// ErrorResponse is used to return an error
 /// </summary>
+[MessagePackObject]
 public class ErrorResponse
 {
     /// <summary>
     /// Error message
     /// </summary>
+    [Key(0)]
     public string Error { get; set; } = string.Empty;
 }

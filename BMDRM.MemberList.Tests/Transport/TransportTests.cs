@@ -1,4 +1,5 @@
 using System.Net;
+using BMDRM.MemberList.Delegates;
 using System.Net.Sockets;
 using System.Threading.Channels;
 using BMDRM.MemberList.Transport;
@@ -216,6 +217,26 @@ namespace BMDRM.MemberList.Tests.Transport
             public List<byte[]> GetMessages()
             {
                 return _messages;
+            }
+
+            public byte[] NodeMeta(int limit)
+            {
+                return Array.Empty<byte>();
+            }
+
+            public byte[][] GetBroadcasts(int overhead, int limit)
+            {
+                return Array.Empty<byte[]>();
+            }
+
+            public byte[] LocalState(bool join)
+            {
+                return Array.Empty<byte>();
+            }
+
+            public void MergeRemoteState(byte[] buf, bool join)
+            {
+                // No-op for mock
             }
         }
 

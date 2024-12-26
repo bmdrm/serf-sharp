@@ -1,25 +1,25 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
+using MessagePack;
+
 namespace BMDRM.MemberList.Network.Messages;
 
 /// <summary>
-/// PushPullHeader is used to inform the otherside how many states we are transferring
+/// PushPullHeader is used to inform the state sync
 /// </summary>
+[MessagePackObject]
 public class PushPullHeader
 {
     /// <summary>
-    /// Number of nodes
+    /// Number of states
     /// </summary>
-    public int Nodes { get; set; }
+    [Key(0)]
+    public int StateCount { get; set; }
 
     /// <summary>
-    /// Encodes the byte length of user state
+    /// User state data
     /// </summary>
-    public int UserStateLen { get; set; }
-
-    /// <summary>
-    /// Is this a join request or a anti-entropy run
-    /// </summary>
-    public bool Join { get; set; }
+    [Key(1)]
+    public byte[] UserState { get; set; } = Array.Empty<byte>();
 }

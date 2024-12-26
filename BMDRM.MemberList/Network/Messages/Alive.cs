@@ -1,42 +1,44 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
+using MessagePack;
+using BMDRM.MemberList.State;
+
 namespace BMDRM.MemberList.Network.Messages;
 
 /// <summary>
-/// Alive is broadcast when we know a node is alive.
-/// Overloaded for nodes joining
+/// Alive is used for nodes that are reporting that they are alive
 /// </summary>
+[MessagePackObject]
 public class Alive
 {
     /// <summary>
-    /// Incarnation number
-    /// </summary>
-    public uint Incarnation { get; set; }
-
-    /// <summary>
     /// Node name
     /// </summary>
-    public string Node { get; set; } = string.Empty;
+    [Key(0)]
+    public string Name { get; set; } = string.Empty;
 
     /// <summary>
     /// Node address
     /// </summary>
-    public byte[] Addr { get; set; } = Array.Empty<byte>();
+    [Key(1)]
+    public string Addr { get; set; } = string.Empty;
 
     /// <summary>
     /// Node port
     /// </summary>
-    public ushort Port { get; set; }
+    [Key(2)]
+    public int Port { get; set; }
 
     /// <summary>
-    /// Node metadata
+    /// Incarnation number
     /// </summary>
-    public byte[]? Meta { get; set; }
+    [Key(3)]
+    public ulong Incarnation { get; set; }
 
     /// <summary>
-    /// The versions of the protocol/delegate that are being spoken, order:
-    /// pmin, pmax, pcur, dmin, dmax, dcur
+    /// Node state
     /// </summary>
-    public byte[] Vsn { get; set; } = Array.Empty<byte>();
+    [Key(4)]
+    public NodeStateType State { get; set; }
 }

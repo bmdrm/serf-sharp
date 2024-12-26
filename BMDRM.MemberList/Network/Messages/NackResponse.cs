@@ -1,17 +1,25 @@
 // Copyright (c) HashiCorp, Inc.
 // SPDX-License-Identifier: MPL-2.0
 
+using MessagePack;
+
 namespace BMDRM.MemberList.Network.Messages;
 
 /// <summary>
-/// Nack response is sent for an indirect ping when the pinger doesn't hear from
-/// the ping-ee within the configured timeout. This lets the original node know
-/// that the indirect ping attempt happened but didn't succeed.
+/// NackResponse is used for a nack response
 /// </summary>
+[MessagePackObject]
 public class NackResponse
 {
     /// <summary>
-    /// Sequence number for the ping
+    /// The sequence number being responded to
     /// </summary>
-    public uint SeqNo { get; set; }
+    [Key(0)]
+    public int SeqNo { get; set; }
+
+    /// <summary>
+    /// The source node
+    /// </summary>
+    [Key(1)]
+    public string From { get; set; } = string.Empty;
 }

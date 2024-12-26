@@ -1,4 +1,5 @@
 using BMDRM.MemberList.Transport;
+using BMDRM.MemberList.Delegates;
 
 namespace BMDRM.MemberList
 {
@@ -9,8 +10,4 @@ namespace BMDRM.MemberList
         public IDelegate Delegate { get; set; } = null!;
     }
 
-    public interface IDelegate
-    {
-        void NotifyMsg(byte[] msg);
-    }
 }
