@@ -23,7 +23,7 @@ namespace BMDRM.MemberList.Transport
             throw new NotImplementedException();
         }
 
-        public Task<Socket> DialTimeoutAsync(string addr, TimeSpan timeout)
+        public Task<Socket?> DialTimeoutAsync(string addr, TimeSpan timeout)
         {
             throw new NotImplementedException();
         }

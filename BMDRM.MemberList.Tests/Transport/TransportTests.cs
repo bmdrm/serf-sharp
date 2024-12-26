@@ -147,7 +147,7 @@ namespace BMDRM.MemberList.Tests.Transport
                 return now;
             }
 
-            public async Task<Socket> DialTimeoutAsync(string addr, TimeSpan timeout)
+            public async Task<Socket?> DialTimeoutAsync(string addr, TimeSpan timeout)
             {
                 var dest = _network.GetPeer(addr);
                 if (dest == null)

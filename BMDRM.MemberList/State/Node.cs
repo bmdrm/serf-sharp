@@ -6,7 +6,7 @@ namespace BMDRM.MemberList.State
     {
         public string Name { get; set; } = "";
         public IPEndPoint Address { get; set; } = null!;
-        public byte[] Meta { get; set; } = Array.Empty<byte>(); // Metadata from the delegate for this node
+        public byte[] Meta { get; set; } = []; // Metadata from the delegate for this node
         public NodeStateType State { get; set; } = NodeStateType.Alive;
         public short PMin { get; set; } // Minimum protocol version this understands
         public short PMax { get; set; } // Maximum protocol version this understands

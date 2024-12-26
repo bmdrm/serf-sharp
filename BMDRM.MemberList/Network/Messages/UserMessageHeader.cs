@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 using MessagePack;
 
 namespace BMDRM.MemberList.Network.Messages;
@@ -15,5 +12,5 @@ public class UserMessageHeader
     /// User message data
     /// </summary>
     [Key(0)]
-    public byte[] Data { get; set; } = Array.Empty<byte>();
+    public byte[] Data { get; set; } = [];
 }

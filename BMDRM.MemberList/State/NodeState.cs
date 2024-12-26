@@ -12,22 +12,6 @@ namespace BMDRM.MemberList.State
         public DateTime StateChange { get; set; }  // Time last state change happened
 
         /// <summary>
-        /// Returns the host:port form of a node's address, suitable for use with a transport.
-        /// </summary>
-        public override string GetAddress()
-        {
-            return base.GetAddress();
-        }
-
-        /// <summary>
-        /// Returns the node name and host:port form of a node's address, suitable for use with a transport.
-        /// </summary>
-        public override (string Addr, string Name) GetFullAddress()
-        {
-            return base.GetFullAddress();
-        }
-
-        /// <summary>
         /// Returns true if the node is in either Dead or Left state
         /// </summary>
         public bool DeadOrLeft()

@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 namespace BMDRM.MemberList.Delegates
 {
     /// <summary>
@@ -12,7 +9,7 @@ namespace BMDRM.MemberList.Delegates
     {
         /// <summary>
         /// NodeMeta is used to retrieve meta-data about the current node
-        /// when broadcasting an alive message. It's length is limited to
+        /// when broadcasting an alive message. Its length is limited to
         /// the given byte size. This metadata is available in the Node structure.
         /// </summary>
         /// <param name="limit">The maximum size of the metadata in bytes</param>

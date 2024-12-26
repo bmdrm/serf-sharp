@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-
 namespace BMDRM.MemberList.Transport
 {
     /// <summary>

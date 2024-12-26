@@ -15,6 +15,6 @@ namespace BMDRM.MemberList.Transport
         /// <summary>
         /// DialAddressTimeout is like DialTimeout but takes an Address instead of just a string address
         /// </summary>
-        Task<Socket> DialAddressTimeoutAsync(Address addr, TimeSpan timeout);
+        Task<Socket?> DialAddressTimeoutAsync(Address addr, TimeSpan timeout);
     }
 }

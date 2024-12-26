@@ -45,7 +45,7 @@ namespace BMDRM.MemberList.Transport
         /// such as anti-entropy or fallback probes if the packet-oriented probe
         /// failed.
         /// </summary>
-        Task<Socket> DialTimeoutAsync(string addr, TimeSpan timeout);
+        Task<Socket?> DialTimeoutAsync(string addr, TimeSpan timeout);
 
         /// <summary>
         /// StreamStream returns an IAsyncEnumerable that can be used to handle incoming stream

@@ -33,17 +33,17 @@ namespace BMDRM.MemberList
         private readonly INodeAwareTransport _transport;
 
         private readonly CancellationTokenSource _handoffCts = new();
-        private readonly LinkedList<object> _highPriorityMsgQueue = new();
-        private readonly LinkedList<object> _lowPriorityMsgQueue = new();
+        private readonly LinkedList<object> _highPriorityMsgQueue = [];
+        private readonly LinkedList<object> _lowPriorityMsgQueue = [];
         private readonly object _msgQueueLock = new();
 
         private readonly object _nodeLock = new();
-        private readonly List<NodeState> _nodes = new();  // Known nodes
+        private readonly List<NodeState> _nodes = [];  // Known nodes
         private readonly Dictionary<string, NodeState> _nodeMap = new();  // Maps Node.Name -> NodeState
         private readonly Dictionary<string, Suspicion.Suspicion> _nodeTimers = new();  // Maps Node.Name -> suspicion timer
 
         private readonly object _tickerLock = new();
-        private readonly List<System.Timers.Timer> _tickers = new();
+        private readonly List<System.Timers.Timer> _tickers = [];
         private readonly CancellationTokenSource _stopTickCts = new();
         private int _probeIndex;
 
@@ -194,7 +194,7 @@ namespace BMDRM.MemberList
         {
             var addr = new Address(node.Address.ToString(), node.Name);
             var socket = await _transport.DialAddressTimeoutAsync(addr, TimeSpan.FromSeconds(10));
-            await socket.SendAsync(msg);
+            if (socket != null) await socket.SendAsync(msg);
             _config.Delegate?.NotifyMsg(msg);
         }
 

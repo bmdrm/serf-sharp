@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 using BMDRM.MemberList.State;
 
 namespace BMDRM.MemberList.Delegates
@@ -29,7 +26,7 @@ namespace BMDRM.MemberList.Delegates
 
         /// <summary>
         /// NotifyUpdate is invoked when a node is detected to have
-        /// updated, usually involving the meta data. The Node argument
+        /// updated, usually involving the metadata. The Node argument
         /// must not be modified.
         /// </summary>
         /// <param name="node">The node that was updated</param>

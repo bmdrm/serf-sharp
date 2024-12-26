@@ -1,5 +1,3 @@
-using System.Timers;
-
 namespace BMDRM.MemberList.State
 {
     /// <summary>

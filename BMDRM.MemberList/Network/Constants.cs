@@ -1,6 +1,3 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
-
 namespace BMDRM.MemberList.Network;
 
 public static class Constants

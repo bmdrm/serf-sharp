@@ -82,10 +82,7 @@ public class Keyring
         }
 
         // If this is the first key, make it primary
-        if (_primaryKey == null)
-        {
-            _primaryKey = key;
-        }
+        _primaryKey ??= key;
 
         _keys.Enqueue(key);
         return true;

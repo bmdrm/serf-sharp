@@ -19,25 +19,21 @@ namespace BMDRM.MemberList.Transport
         public IAsyncEnumerable<Packet> PacketStream => _transport.PacketStream;
         public IAsyncEnumerable<Socket> StreamStream => _transport.StreamStream;
 
-        public async Task<Socket> DialAddressTimeoutAsync(Address addr, TimeSpan timeout)
+        public async Task<Socket?> DialAddressTimeoutAsync(Address addr, TimeSpan timeout)
         {
             var conn = await _transport.DialAddressTimeoutAsync(addr, timeout);
-            if (conn != null)
-            {
-                using var networkStream = new NetworkStream(conn, ownsSocket: false);
-                await LabelHeader.AddLabelHeaderToStreamAsync(networkStream, _label);
-            }
+            if (conn == null) return conn;
+            using var networkStream = new NetworkStream(conn, ownsSocket: false);
+            await LabelHeader.AddLabelHeaderToStreamAsync(networkStream, _label);
             return conn;
         }
 
-        public async Task<Socket> DialTimeoutAsync(string addr, TimeSpan timeout)
+        public async Task<Socket?> DialTimeoutAsync(string addr, TimeSpan timeout)
         {
             var conn = await _transport.DialTimeoutAsync(addr, timeout);
-            if (conn != null)
-            {
-                using var networkStream = new NetworkStream(conn, ownsSocket: false);
-                await LabelHeader.AddLabelHeaderToStreamAsync(networkStream, _label);
-            }
+            if (conn == null) return conn;
+            using var networkStream = new NetworkStream(conn, ownsSocket: false);
+            await LabelHeader.AddLabelHeaderToStreamAsync(networkStream, _label);
             return conn;
         }
 

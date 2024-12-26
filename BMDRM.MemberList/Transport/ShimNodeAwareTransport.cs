@@ -18,12 +18,12 @@ namespace BMDRM.MemberList.Transport
         public IAsyncEnumerable<Packet> PacketStream => _transport.PacketStream;
         public IAsyncEnumerable<Socket> StreamStream => _transport.StreamStream;
 
-        public Task<Socket> DialAddressTimeoutAsync(Address addr, TimeSpan timeout)
+        public Task<Socket?> DialAddressTimeoutAsync(Address addr, TimeSpan timeout)
         {
             return _transport.DialTimeoutAsync(addr.Addr, timeout);
         }
 
-        public Task<Socket> DialTimeoutAsync(string addr, TimeSpan timeout)
+        public Task<Socket?> DialTimeoutAsync(string addr, TimeSpan timeout)
         {
             return _transport.DialTimeoutAsync(addr, timeout);
         }
