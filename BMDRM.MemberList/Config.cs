@@ -153,6 +153,11 @@ namespace BMDRM.MemberList
         public IDelegate Delegate { get; set; } = null!;
 
         /// <summary>
+        /// Delegate for handling ping/ack messages
+        /// </summary>
+        public IPingDelegate? PingDelegate { get; set; }
+
+        /// <summary>
         /// List of allowed CIDRs for IP validation
         /// </summary>
         public List<IPNetwork> CIDRsAllowed { get; set; } = new();
